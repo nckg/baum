@@ -94,11 +94,11 @@ class SetMapper
      * Maps a tree structure into the database.
      *
      * @param array $tree
-     * @param int|string|null $parentKey
-     * @param array $affectedKeys
+     * @param mixed $parent
+     *
      * @return bool
      */
-    protected function mapTreeRecursive(array $tree, $parentKey = null, array &$affectedKeys = [])
+    protected function mapTreeRecursive(array $tree, $parentKey = null, &$affectedKeys = [], $root = true)
     {
         // For every attribute entry: We'll need to instantiate a new node either
         // from the database (if the primary key was supplied) or a new instance. Then,
@@ -106,11 +106,12 @@ class SetMapper
         // present) and save it. Finally, tail-recurse performing the same
         // operations for any child node present. Setting the `parent_id` property at
         // each level will take care of the nesting work for us.
+        $sibling = null;
         foreach ($tree as $attributes) {
             $node = $this->firstOrNew($this->getSearchAttributes($attributes));
 
             $data = $this->getDataAttributes($attributes);
-            if (null !== $parentKey) {
+            if (!is_null($parentKey)) {
                 $data[$node->getParentColumnName()] = $parentKey;
             }
 
@@ -122,7 +123,13 @@ class SetMapper
                 return false;
             }
 
-            if (!$node->isRoot()) {
+            if($root) {
+                if($sibling) {
+                    $node->moveToRightOf($sibling);
+                }
+
+                $sibling = $node;
+            } else {
                 $node->makeLastChildOf($node->parent);
             }
 
@@ -132,7 +139,7 @@ class SetMapper
                 $children = $attributes[$this->getChildrenKeyName()];
 
                 if (count($children) > 0) {
-                    $result = $this->mapTreeRecursive($children, $node->getKey(), $affectedKeys);
+                    $result = $this->mapTreeRecursive($children, $node->getKey(), $affectedKeys, false);
 
                     if (!$result) {
                         return false;
