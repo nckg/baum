@@ -123,8 +123,8 @@ class SetMapper
                 return false;
             }
 
-            if($root) {
-                if($sibling) {
+            if ($root) {
+                if ($sibling) {
                     $node->moveToRightOf($sibling);
                 }
 
